@@ -4,11 +4,13 @@ const { v4: uuidv4 } = require('uuid');
 const { admin, db } = require('../config/firebase');
 const Notification = require('../models/Notification');
 const { removeInvalidTokens } = require('../helpers/tokenHelper');
+const connectDB = require('../config/database');
 
 // POST /send
 // Body: { title, msg, tokens:[{hocVienId, DeviceTokens}], notiId?, data?, sendAll? }
 router.post('/send', async (req, res) => {
   try {
+    await connectDB();
     const { title, msg, tokens, notiId, data = {}, sendAll = false } = req.body;
     if (!title || !msg)
       return res.status(400).json({ success: false, message: 'Thiếu title hoặc msg' });
@@ -61,6 +63,7 @@ router.post('/send', async (req, res) => {
 // GET /notifications?studentID=xxx — Flutter lấy danh sách thông báo
 router.get('/', async (req, res) => {
   try {
+    await connectDB();
     const { studentID } = req.query;
     if (!studentID)
       return res.status(400).json({ success: false, message: 'Thiếu studentID' });
@@ -87,6 +90,7 @@ router.get('/', async (req, res) => {
 // GET /notifications/all — web admin xem lịch sử
 router.get('/all', async (req, res) => {
   try {
+    await connectDB();
     const data = await Notification.find()
       .select('-users').sort({ sentAt: -1 }).limit(100).lean();
     res.json({ success: true, data });
@@ -100,6 +104,7 @@ router.get('/all', async (req, res) => {
 // Body: { studentID, notifyID }
 router.put('/read', async (req, res) => {
   try {
+    await connectDB();
     const { studentID, notifyID } = req.body;
     if (!studentID || !notifyID)
       return res.status(400).json({ success: false, message: 'Thiếu studentID hoặc notifyID' });
@@ -119,6 +124,7 @@ router.put('/read', async (req, res) => {
 // Body: { studentID }
 router.put('/read-all', async (req, res) => {
   try {
+    await connectDB();
     const { studentID } = req.body;
     if (!studentID)
       return res.status(400).json({ success: false, message: 'Thiếu studentID' });
@@ -138,6 +144,7 @@ router.put('/read-all', async (req, res) => {
 // DELETE /notifications/:notifyID — xóa thông báo
 router.delete('/:notifyID', async (req, res) => {
   try {
+    await connectDB();
     await Notification.deleteOne({ notifyID: req.params.notifyID });
     res.json({ success: true });
   } catch (e) {
