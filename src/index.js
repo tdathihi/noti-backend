@@ -15,6 +15,7 @@ connectDB();
 app.use('/api/token', require('./routes/token'));
 app.use('/api/devices', require('./routes/device'));
 app.use('/api/notifications', require('./routes/notification'));
+app.use('/api/cron', require('./routes/cron'));
 
 app.get('/', (req, res) => res.json({ success: true, message: 'Notification server running' }));
 

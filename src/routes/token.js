@@ -6,18 +6,30 @@ const { admin, db } = require('../config/firebase');
 // Body: { hocVienId, token }
 router.post('/register-token', async (req, res) => {
   try {
-    const { hocVienId, token, mssv, hoTen } = req.body;
+    const { hocVienId, token, mssv, hoTen, ngaysinh } = req.body;
     if (!hocVienId || !token)
       return res.status(400).json({ success: false, message: 'Thiếu hocVienId hoặc token' });
 
     const ref = db.collection('users').doc(String(hocVienId));
     const snap = await ref.get();
 
+    // Chuẩn hoá ngaysinh → "MM-DD" để so sánh hàng năm
+    let ngaysinhMMDD = null;
+    if (ngaysinh) {
+      try {
+        const d = new Date(ngaysinh);
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        ngaysinhMMDD = `${mm}-${dd}`;
+      } catch (_) {}
+    }
+
     if (snap.exists) {
       await ref.update({
         DeviceTokens: admin.firestore.FieldValue.arrayUnion(token),
         ...(mssv && { mssv }),
         ...(hoTen && { hoTen }),
+        ...(ngaysinhMMDD && { ngaysinhMMDD }),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     } else {
@@ -26,6 +38,7 @@ router.post('/register-token', async (req, res) => {
         mssv: mssv || '',
         hoTen: hoTen || '',
         DeviceTokens: [token],
+        ...(ngaysinhMMDD && { ngaysinhMMDD }),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
