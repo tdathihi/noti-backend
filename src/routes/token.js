@@ -6,7 +6,7 @@ const { admin, db } = require('../config/firebase');
 // Body: { hocVienId, token }
 router.post('/register-token', async (req, res) => {
   try {
-    const { hocVienId, token } = req.body;
+    const { hocVienId, token, mssv, hoTen } = req.body;
     if (!hocVienId || !token)
       return res.status(400).json({ success: false, message: 'Thiếu hocVienId hoặc token' });
 
@@ -16,11 +16,15 @@ router.post('/register-token', async (req, res) => {
     if (snap.exists) {
       await ref.update({
         DeviceTokens: admin.firestore.FieldValue.arrayUnion(token),
+        ...(mssv && { mssv }),
+        ...(hoTen && { hoTen }),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     } else {
       await ref.set({
         hocVienId: String(hocVienId),
+        mssv: mssv || '',
+        hoTen: hoTen || '',
         DeviceTokens: [token],
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
