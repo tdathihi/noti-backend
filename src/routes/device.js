@@ -29,4 +29,27 @@ router.get('/:hocVienId', async (req, res) => {
   }
 });
 
+// POST /devices/by-mssv — tìm thiết bị theo danh sách MSSV
+// Body: { mssvList: ["SV001", "SV002"] }
+router.post('/by-mssv', async (req, res) => {
+  try {
+    const { mssvList } = req.body;
+    if (!Array.isArray(mssvList) || mssvList.length === 0)
+      return res.status(400).json({ success: false, message: 'Thiếu mssvList' });
+
+    const snap = await db.collection('users')
+      .where('mssv', 'in', mssvList.slice(0, 30)) // Firestore giới hạn 30
+      .get();
+
+    const data = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(d => d.DeviceTokens?.length > 0);
+
+    res.json({ success: true, data });
+  } catch (e) {
+    console.error('[by-mssv]', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 module.exports = router;
