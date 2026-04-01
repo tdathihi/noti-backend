@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { admin, db } = require('../config/firebase');
+const Notification = require('../models/Notification');
+const connectDB = require('../config/database');
 
 // GET /api/cron/birthday — Vercel gọi hàng ngày lúc 7:00 SA (GMT+7 = 0:00 UTC)
 router.get('/birthday', async (req, res) => {
@@ -28,19 +30,28 @@ router.get('/birthday', async (req, res) => {
     for (let i = 0; i < allTokens.length; i += 500)
       chunks.push(allTokens.slice(i, i + 500));
 
+    await connectDB();
+
+    const title = '🎂 Chúc mừng sinh nhật!';
+    const body  = 'Chúc bạn sinh nhật vui vẻ, luôn mạnh khỏe và học tập thật tốt! 🎉';
+
     let successCount = 0;
     for (const chunk of chunks) {
       const result = await admin.messaging().sendEachForMulticast({
         tokens: chunk,
-        notification: {
-          title: '🎂 Chúc mừng sinh nhật!',
-          body: 'Chúc bạn sinh nhật vui vẻ, luôn mạnh khỏe và học tập thật tốt! 🎉',
-        },
+        notification: { title, body },
         android: { priority: 'high', notification: { sound: 'default' } },
         apns: { payload: { aps: { sound: 'default' } } },
       });
       successCount += result.responses.filter(r => r.success).length;
     }
+
+    // Lưu vào MongoDB để hiện trong màn hình thông báo
+    await Notification.create({
+      title,
+      body,
+      users: users.map(u => ({ userID: String(u.hocVienId), status: 'unread' })),
+    });
 
     console.log(`[birthday-cron] ${today} — gửi cho ${users.length} SV, ${successCount}/${allTokens.length} thiết bị`);
     res.json({ success: true, date: today, students: users.length, successCount });
