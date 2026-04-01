@@ -23,11 +23,28 @@ app.use('/api/firebase/notifications', notificationRoutes);
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// ── Start ───────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
+// ── Start (local only) ──────────────────────────────────
+let dbReady = false;
+const ensureDB = async () => {
+  if (!dbReady) {
+    await connectDB();
+    dbReady = true;
+  }
+};
 
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+// Vercel serverless: wrap app để connect DB trước mỗi request
+const handler = async (req, res) => {
+  await ensureDB();
+  return app(req, res);
+};
+
+// Export cho Vercel
+module.exports = handler;
+
+// Chạy local
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  connectDB().then(() => {
+    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
   });
-});
+}
