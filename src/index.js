@@ -3,48 +3,19 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/database');
 
-// Khởi tạo Firebase (phải load trước các route dùng firebase)
-require('./config/firebase');
-
-const tokenRoutes        = require('./routes/token');
-const deviceRoutes       = require('./routes/device');
-const notificationRoutes = require('./routes/notification');
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// ── Routes ─────────────────────────────────────────────
-app.use('/api/firebase', tokenRoutes);
-app.use('/api/firebase/devices', deviceRoutes);
-app.use('/api/firebase/notifications', notificationRoutes);
+// Connect MongoDB
+connectDB();
 
-// Health check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// Routes
+app.use('/api/token', require('./routes/token'));
+app.use('/api/devices', require('./routes/device'));
+app.use('/api/notifications', require('./routes/notification'));
 
-// ── Start (local only) ──────────────────────────────────
-let dbReady = false;
-const ensureDB = async () => {
-  if (!dbReady) {
-    await connectDB();
-    dbReady = true;
-  }
-};
+app.get('/', (req, res) => res.json({ success: true, message: 'Notification server running' }));
 
-// Vercel serverless: wrap app để connect DB trước mỗi request
-const handler = async (req, res) => {
-  await ensureDB();
-  return app(req, res);
-};
-
-// Export cho Vercel
-module.exports = handler;
-
-// Chạy local
-if (require.main === module) {
-  const PORT = process.env.PORT || 3000;
-  connectDB().then(() => {
-    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
-  });
-}
+module.exports = app;
