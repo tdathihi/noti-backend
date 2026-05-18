@@ -71,4 +71,28 @@ router.delete('/register-token', async (req, res) => {
   }
 });
 
+// GET /users — Trả danh sách user đã và đang đăng nhập
+router.get('/users', async (req, res) => {
+  try {
+    const snap = await db.collection('users').orderBy('updatedAt', 'desc').get();
+    const data = snap.docs.map(doc => {
+      const d = doc.data();
+      const tokens = Array.isArray(d.DeviceTokens) ? d.DeviceTokens : [];
+      return {
+        hocVienId: d.hocVienId || doc.id,
+        mssv: d.mssv || '',
+        hoTen: d.hoTen || '',
+        isOnline: tokens.length > 0,
+        tokenCount: tokens.length,
+        updatedAt: d.updatedAt?.toDate?.()?.toISOString() || null,
+        createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+      };
+    });
+    res.json({ success: true, data });
+  } catch (e) {
+    console.error('[get-users]', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 module.exports = router;
