@@ -19,27 +19,38 @@ app.use('/api/cron', require('./routes/cron'));
 
 app.get('/', (req, res) => res.json({ success: true, message: 'Notification server running' }));
 
-app.get('/debug', (req, res) => {
+app.get('/debug', async (req, res) => {
   const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
 
   if (!b64 && !raw) {
-    return res.json({ error: 'Không có env var nào được set (FIREBASE_SERVICE_ACCOUNT_BASE64 hoặc FIREBASE_SERVICE_ACCOUNT)' });
+    return res.json({ error: 'Không có env var nào được set' });
   }
 
+  let credInfo = {};
   try {
     const parsed = b64
       ? JSON.parse(Buffer.from(b64, 'base64').toString('utf8'))
       : JSON.parse(raw);
-    res.json({
+    credInfo = {
       source: b64 ? 'FIREBASE_SERVICE_ACCOUNT_BASE64' : 'FIREBASE_SERVICE_ACCOUNT',
       project_id: parsed.project_id,
       client_email: parsed.client_email,
       has_private_key: !!parsed.private_key,
       private_key_starts_correctly: parsed.private_key?.startsWith('-----BEGIN PRIVATE KEY-----'),
-    });
+    };
   } catch (e) {
-    res.json({ error: 'Parse thất bại', detail: e.message, source: b64 ? 'base64' : 'raw' });
+    return res.json({ error: 'Parse thất bại', detail: e.message });
+  }
+
+  // Test Firestore connection
+  try {
+    const { db } = require('./config/firebase');
+    await db.collection('_ping').doc('test').set({ ts: Date.now() });
+    await db.collection('_ping').doc('test').delete();
+    res.json({ ...credInfo, firestore: 'OK' });
+  } catch (e) {
+    res.json({ ...credInfo, firestore: 'FAIL', firestoreError: e.message, firestoreCode: e.code });
   }
 });
 
