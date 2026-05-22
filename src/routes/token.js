@@ -6,7 +6,7 @@ const { admin, db } = require('../config/firebase');
 // Body: { hocVienId, token }
 router.post('/register-token', async (req, res) => {
   try {
-    const { hocVienId, token, mssv, hoTen, ngaysinh } = req.body;
+    const { hocVienId, token, mssv, hoTen, ngaysinh, userid } = req.body;
     if (!hocVienId || !token)
       return res.status(400).json({ success: false, message: 'Thiếu hocVienId hoặc token' });
 
@@ -30,6 +30,7 @@ router.post('/register-token', async (req, res) => {
         ...(mssv && { mssv }),
         ...(hoTen && { hoTen }),
         ...(ngaysinhMMDD && { ngaysinhMMDD }),
+        ...(userid && { userid }),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     } else {
@@ -37,6 +38,7 @@ router.post('/register-token', async (req, res) => {
         hocVienId: String(hocVienId),
         mssv: mssv || '',
         hoTen: hoTen || '',
+        userid: userid || '',
         DeviceTokens: [token],
         ...(ngaysinhMMDD && { ngaysinhMMDD }),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -82,6 +84,7 @@ router.get('/users', async (req, res) => {
         hocVienId: d.hocVienId || doc.id,
         mssv: d.mssv || '',
         hoTen: d.hoTen || '',
+        userid: d.userid || '',
         isOnline: tokens.length > 0,
         tokenCount: tokens.length,
         updatedAt: d.updatedAt?.toDate?.()?.toISOString() || null,
