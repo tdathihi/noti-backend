@@ -20,18 +20,26 @@ app.use('/api/cron', require('./routes/cron'));
 app.get('/', (req, res) => res.json({ success: true, message: 'Notification server running' }));
 
 app.get('/debug', (req, res) => {
+  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) return res.json({ error: 'FIREBASE_SERVICE_ACCOUNT is not set' });
+
+  if (!b64 && !raw) {
+    return res.json({ error: 'Không có env var nào được set (FIREBASE_SERVICE_ACCOUNT_BASE64 hoặc FIREBASE_SERVICE_ACCOUNT)' });
+  }
+
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = b64
+      ? JSON.parse(Buffer.from(b64, 'base64').toString('utf8'))
+      : JSON.parse(raw);
     res.json({
+      source: b64 ? 'FIREBASE_SERVICE_ACCOUNT_BASE64' : 'FIREBASE_SERVICE_ACCOUNT',
       project_id: parsed.project_id,
       client_email: parsed.client_email,
       has_private_key: !!parsed.private_key,
-      private_key_start: parsed.private_key?.substring(0, 40),
+      private_key_starts_correctly: parsed.private_key?.startsWith('-----BEGIN PRIVATE KEY-----'),
     });
   } catch (e) {
-    res.json({ error: 'JSON parse failed', detail: e.message });
+    res.json({ error: 'Parse thất bại', detail: e.message, source: b64 ? 'base64' : 'raw' });
   }
 });
 
