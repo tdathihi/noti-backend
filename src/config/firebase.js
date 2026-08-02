@@ -8,12 +8,22 @@ if (!admin.apps.length) {
 
   if (fs.existsSync(jsonPath)) {
     serviceAccount = require(jsonPath);
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
-    serviceAccount = JSON.parse(
-      Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
-    );
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    try {
+      serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+        : process.env.FIREBASE_SERVICE_ACCOUNT;
+    } catch (e) {
+      console.error('Lỗi parse FIREBASE_SERVICE_ACCOUNT:', e.message);
+    }
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+    try {
+      serviceAccount = JSON.parse(
+        Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
+      );
+    } catch (e) {
+      console.error('Lỗi parse FIREBASE_SERVICE_ACCOUNT_BASE64:', e.message);
+    }
   }
 
   if (serviceAccount && serviceAccount.private_key) {
