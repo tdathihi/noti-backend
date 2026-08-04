@@ -26,7 +26,26 @@ router.post('/send', async (req, res) => {
     if (!groups.length)
       return res.status(400).json({ success: false, message: 'Không có thiết bị nào' });
 
-    const allTokens = groups.flatMap(g => g.DeviceTokens);
+    // Nếu group chỉ có hocVienId (không có DeviceTokens), lookup từ Firestore
+    const needsLookup = groups.filter(g => !g.DeviceTokens || g.DeviceTokens.length === 0);
+    if (needsLookup.length > 0) {
+      const lookupResults = await Promise.all(
+        needsLookup.map(async g => {
+          const snap = await db.collection('users').doc(String(g.hocVienId)).get();
+          return snap.exists ? { hocVienId: g.hocVienId, DeviceTokens: snap.data().DeviceTokens || [] } : null;
+        })
+      );
+      // Gộp: giữ groups đã có DeviceTokens + thêm kết quả lookup
+      const hasTokens = groups.filter(g => g.DeviceTokens?.length > 0);
+      const lookedUp = lookupResults.filter(r => r && r.DeviceTokens.length > 0);
+      groups = [...hasTokens, ...lookedUp];
+      console.log(`[send] Đã lookup ${lookedUp.length}/${needsLookup.length} users từ Firestore`);
+    }
+
+    if (!groups.length)
+      return res.status(400).json({ success: false, message: 'Không tìm thấy DeviceToken nào — sinh viên chưa đăng nhập app?' });
+
+    const allTokens = groups.flatMap(g => g.DeviceTokens).filter(Boolean);
     const allResponses = [];
 
     // Gửi theo chunk 500 (giới hạn của FCM)
